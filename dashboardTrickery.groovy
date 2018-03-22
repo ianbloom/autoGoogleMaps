@@ -17,57 +17,106 @@ import org.apache.http.entity.ContentType;
 def accessId = 'dSpe6j9eTQXs3Iph7jCU'
 def accessKey = 'dcm!p2d2w79V=5f}+[354xL=g{k442Y6h5qV}C_6'
 def account = 'ianbloom'
+def rootGroupName = 'USA'
 def rootGroup = '39'
 
-def resourcePath = '/device/groups'
-def queryParameters = '?fields=name,id,customProperties&filter=parentId~' + rootGroup;
-def url = 'https://' + account + '.logicmonitor.com' + '/santaba/rest' + resourcePath + queryParameters;
-def data = '' // Single quoted as contents include double quotes. Only used when updating data, but being blank elsewise shouldn't hurt. In for template purposes.
-def requestVerb = 'GET'
+// First we create a dashboard with the name of the root group and capture its dashboard ID
+//
+// If this dashboard already exists, we execute a GET request to obtain the dashboard name
 
-groupDict = LMGET(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data)
-holderDictArray = [];
+def requestVerb = 'POST';
+def resourcePath = '/dashboard/dashboards';
+def queryParameters = '';
+def data = '{"name":"' + rootGroupName + '","description":"","groupId":1,"sharable":true}';
 
-if (groupDict.code == 200) {
-	responseBody = groupDict.body;
-	rootGroups = new JsonSlurper().parseText(responseBody);
-	groupArray = rootGroups.data.items;
-	groupArrayLength = groupArray.size();
-	for(i=0; i<groupArrayLength; i++) {
-		// For each device group, obtain name, id, and all customProperties
-		groupName = groupArray[i].name;
-		groupId = groupArray[i].id;
-		customProperties = groupArray[i].customProperties;
+// Attempt to POST a dashboard with the name of the root group
+responseDict =  LMPOST(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
 
-		// Filter based on the presence of customProperties
-		if(customProperties != []) {
-			customProperties.each { property ->
-				// If a device group contains the 'location' property, continue
-				if(property.name == "location") {
-					// Initialize holderDict which will be a lookup for POST of Dashboard and Widget
-					holderDict = [:];
-					holderDict['groupName']=groupName;
-					holderDict['groupId']=groupId;
-					holderDict['location']=property.value;
-					// Append current holderDict for individual device group to holderDictArray
-					holderDictArray.add(holderDict);
-				}
-			}
-		}
-	}
+responseBody = responseDict.body;
+output = new JsonSlurper().parseText(responseBody);
+
+// Initialize variable to hold dashboard ID of dashboard with the name of the root group
+rootDashboardId = null;
+if(output.data == null) {
+	// IF OUTPUT DATA IS EMPTY, THEN A DASHBOARD OF THIS NAME EXISTS, GET ITS ID
+
+	requestVerb = 'GET';
+	resourcePath = '/dashboard/dashboards';
+	queryParameters = '?filter=name~USA';
+	data = '';
+
+	responseDict = LMGET(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
+	responseBody = responseDict.body;
+	responseJSON = new JsonSlurper().parseText(responseBody);
+	rootDashboardId = responseJSON.data.items[0].id;
 }
-holderDictArray.each { item ->
-	print(item['groupName']);
-	print("\n")
-	print(item['groupId']);
-	print("\n")
-	print(item['location']);
-	print("\n")
-	print("\n")
+else {
+	rootDashboardId = output.data.id;
+	// IF THERE IS DATA (FIRST RUN) THEN CAPTURE ID OF ROOT DASH
+	// THIS ID WILL BE USED TO FORM URL TO RETURN TO ROOT DASHBOARD WINDOW
 }
 
+// First see if root dash has an existing text widget with the name rootGroupName_menu
+requestVerb = 'GET';
+resourcePath = '/dashboard/dashboards/' + rootDashboardId + '/widgets';
+queryParameters = '?filter=name~' + rootGroupName + '_menu';
+data = ''
+
+responseDict =  LMGET(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
+responseBody = responseDict.body;
+responseJSON = new JsonSlurper().parseText(responseBody);
+textWidgetId = null;
+
+// If root dash does not have a text widget, post one
+if(responseJSON.data.total == 0) {
+	// Attempt to PUT a text widget on the root dash
+	requestVerb = 'POST';
+	resourcePath = '/dashboard/widgets';
+	queryParameters = '';
+	html = 'Hello World!';
+	data = '{"name":"' + rootGroupName + '_menu","type":"text","dashboardId":"' + rootDashboardId + '","content":"' + html + '"}';
+
+	responseDict = LMPOST(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
+
+	responseBody = responseDict.body;
+	responseJSON = new JsonSlurper().parseText(responseBody);
+	textWidgetId = responseJSON.data.id;
+	println("WIDGET ID:  " + textWidgetId);
+
+}
+// If root dash DOES have a text widget, PUT to update
+else {
+	textWidgetId = responseJSON.data.items[0].id;
+	println("WIDGET ID:  " + textWidgetId);
+}
 
 
+
+/*
+// Attempt to PUT a text widget on the root dash
+requestVerb = 'POST';
+resourcePath = '/dashboard/widgets';
+queryParameters = '';
+html = 'Hello World!';
+data = '{"name":".","type":"text","dashboardId":"' + rootDashboardId + '","content":"' + html + '"}';
+
+responseDict = LMPOST(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
+println("OKAY FOR REAL HERE IS THE OUTPUT: ");
+println("STATUS: " + responseDict.code);
+println("BODY: " + responseDict.body);
+*/
+
+
+
+
+
+
+
+
+
+/////////////////////////////////////
+// Santa's Little Helper Functions //
+/////////////////////////////////////
 
 def LMGET(_accessId, _accessKey, _account, _requestVerb, _resourcePath, _queryParameters, _data) {
 	// DATA SHOULD BE EMPTY
