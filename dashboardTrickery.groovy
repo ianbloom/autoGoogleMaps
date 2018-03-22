@@ -69,7 +69,6 @@ textWidgetId = null;
 
 // If root dash does not have a text widget, post one
 if(responseJSON.data.total == 0) {
-	// Attempt to PUT a text widget on the root dash
 	requestVerb = 'POST';
 	resourcePath = '/dashboard/widgets';
 	queryParameters = '';
@@ -80,6 +79,8 @@ if(responseJSON.data.total == 0) {
 
 	responseBody = responseDict.body;
 	responseJSON = new JsonSlurper().parseText(responseBody);
+
+	// Capture textWidgetId
 	textWidgetId = responseJSON.data.id;
 	println("WIDGET ID:  " + textWidgetId);
 
@@ -88,6 +89,17 @@ if(responseJSON.data.total == 0) {
 else {
 	textWidgetId = responseJSON.data.items[0].id;
 	println("WIDGET ID:  " + textWidgetId);
+
+	requestVerb = 'PUT';
+	resourcePath = '/dashboard/widgets/' + textWidgetId;
+	queryParameters = '';
+	html = 'I PUT THIS HERE';
+	data = '{"name":"' + rootGroupName + '_menu","type":"text","dashboardId":"' + rootDashboardId + '","content":"' + html + '"}';
+
+	responseDict = LMPUT(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
+	println("body . " + responseDict.body);
+	println("code . " + responseDict.code);
+	
 }
 
 
@@ -117,6 +129,45 @@ println("BODY: " + responseDict.body);
 /////////////////////////////////////
 // Santa's Little Helper Functions //
 /////////////////////////////////////
+
+def LMPUT(_accessId, _accessKey, _account, _requestVerb, _resourcePath, _queryParameters, _data) {
+
+	// Initialize dictionary to hold response code and response body
+	responseDict = [:];
+
+	// Construcst URL to POST to from specified input
+	url = 'https://' + _account + '.logicmonitor.com' + '/santaba/rest' + _resourcePath + _queryParameters;
+
+	StringEntity params = new StringEntity(_data,ContentType.APPLICATION_JSON);
+
+	// Get current time
+	epoch = System.currentTimeMillis();
+
+	// Calculate signature
+	requestVars = _requestVerb + epoch + _data + _resourcePath;
+
+	hmac = Mac.getInstance('HmacSHA256');
+	secret = new SecretKeySpec(_accessKey.getBytes(), 'HmacSHA256');
+	hmac.init(secret);
+	hmac_signed = Hex.encodeHexString(hmac.doFinal(requestVars.getBytes()));
+	signature = hmac_signed.bytes.encodeBase64();
+
+	// HTTP Get
+	CloseableHttpClient httpclient = HttpClients.createDefault();
+	http_request = new HttpPut(url);
+	http_request.addHeader("Authorization" , "LMv1 " + _accessId + ":" + signature + ":" + epoch);
+	http_request.setHeader("Accept", "application/json");
+	http_request.setHeader("Content-type", "application/json");
+	http_request.setEntity(params);
+	response = httpclient.execute(http_request);
+	responseBody = EntityUtils.toString(response.getEntity());
+	code = response.getStatusLine().getStatusCode();
+
+	responseDict['code'] = code;
+	responseDict['body'] = responseBody
+	
+	return responseDict;
+}
 
 def LMGET(_accessId, _accessKey, _account, _requestVerb, _resourcePath, _queryParameters, _data) {
 	// DATA SHOULD BE EMPTY
