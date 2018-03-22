@@ -104,22 +104,6 @@ else {
 
 
 
-/*
-// Attempt to PUT a text widget on the root dash
-requestVerb = 'POST';
-resourcePath = '/dashboard/widgets';
-queryParameters = '';
-html = 'Hello World!';
-data = '{"name":".","type":"text","dashboardId":"' + rootDashboardId + '","content":"' + html + '"}';
-
-responseDict = LMPOST(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
-println("OKAY FOR REAL HERE IS THE OUTPUT: ");
-println("STATUS: " + responseDict.code);
-println("BODY: " + responseDict.body);
-*/
-
-
-
 
 
 
