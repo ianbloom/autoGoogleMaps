@@ -56,6 +56,10 @@ else {
 	// THIS ID WILL BE USED TO FORM URL TO RETURN TO ROOT DASHBOARD WINDOW
 }
 
+/////////////////
+// TEXT WIDGET //
+/////////////////
+
 // First see if root dash has an existing text widget with the name rootGroupName_menu
 requestVerb = 'GET';
 resourcePath = '/dashboard/dashboards/' + rootDashboardId + '/widgets';
@@ -82,7 +86,6 @@ if(responseJSON.data.total == 0) {
 
 	// Capture textWidgetId
 	textWidgetId = responseJSON.data.id;
-	println("WIDGET ID:  " + textWidgetId);
 
 }
 // If root dash DOES have a text widget, PUT to update
@@ -97,9 +100,62 @@ else {
 	data = '{"name":"' + rootGroupName + '_menu","type":"text","dashboardId":"' + rootDashboardId + '","content":"' + html + '"}';
 
 	responseDict = LMPUT(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
+}
+
+////////////////
+// MAP WIDGET //
+////////////////
+
+// First see if root dash has an existing text widget with the name rootGroupName_menu
+requestVerb = 'GET';
+resourcePath = '/dashboard/dashboards/' + rootDashboardId + '/widgets';
+queryParameters = '?filter=name~' + rootGroupName + '_map';
+data = ''
+
+responseDict =  LMGET(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
+responseBody = responseDict.body;
+responseJSON = new JsonSlurper().parseText(responseBody);
+textWidgetId = null;
+
+// If root dash does not have a gmap widget, post one
+if(responseJSON.data.total == 0) {
+	requestVerb = 'POST';
+	resourcePath = '/dashboard/widgets';
+	queryParameters = '';
+
+	mapPoints = '[{"type":"group","deviceGroupFullPath":"' + rootGroupName + '"}]'
+	data = '{"name":"' + rootGroupName + '_map","type":"gmap","dashboardId":"' + rootDashboardId + '","mapPoints":' + mapPoints + '}';
+
+	responseDict = LMPOST(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
+
+	responseBody = responseDict.body;
+	responseJSON = new JsonSlurper().parseText(responseBody);
+
+	// Capture textWidgetId
+	mapWidgetId = responseJSON.data.id;
+	println("WIDGET ID:  " + mapWidgetId);
+
 	println("body . " + responseDict.body);
 	println("code . " + responseDict.code);
-	
+
+}
+// If root dash DOES have a gmap widget, PUT to update
+else {
+	mapWidgetId = responseJSON.data.items[0].id;
+	println("WIDGET ID:  " + textWidgetId);
+
+	requestVerb = 'PUT';
+	resourcePath = '/dashboard/widgets/' + textWidgetId;
+	queryParameters = '';
+
+	mapPoints = '[{"type":"group","deviceGroupFullPath":"' + rootGroupName + '"}]'
+	data = '{"name":"' + rootGroupName + '_map","type":"gmap","dashboardId":"' + rootDashboardId + '","mapPoints":' + mapPoints + '}';
+
+	responseDict = LMPUT(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
+	println("WIDGET ID:  " + mapWidgetId);
+
+	println("body . " + responseDict.body);
+	println("code . " + responseDict.code);
 }
 
 
