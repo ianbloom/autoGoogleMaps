@@ -35,6 +35,6 @@ USA), and a menu widget which contains links to each of the subgroup dashboards.
 
 ### Still to be done...
 
-- [] Beautify the dashboards
-- [] Handle subgroup deletion
-- [] Duplicate dashboards according to a user specified template
+- [ ] Beautify the dashboards
+- [ ] Handle subgroup deletion
+- [ ] Duplicate dashboards according to a user specified template
