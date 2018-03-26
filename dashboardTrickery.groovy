@@ -240,7 +240,10 @@ if(responseJSON.data.total == 0) {
 	resourcePath = '/dashboard/widgets';
 	queryParameters = '';
 	//html = 'Hello World!';
-	html = "<a href='https://ianbloom.logicmonitor.com/santaba/uiv3/dashboard/index.jsp#dashboard=68' target='_self'>USA</a>";
+	html = "";
+	subGroupArray.each { item ->
+		html += "<a href='https://ianbloom.logicmonitor.com/santaba/uiv3/dashboard/index.jsp#dashboard=" + item.dashId + "' target='_top'>" + item.name + "</a><br />";
+	}
 	data = '{"name":"' + rootGroupName + '_menu","type":"text","dashboardId":"' + rootDashboardId + '","content":"' + html + '"}';
 
 	responseDict = LMPOST(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
