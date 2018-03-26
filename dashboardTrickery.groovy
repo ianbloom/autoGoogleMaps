@@ -56,6 +56,169 @@ else {
 	// THIS ID WILL BE USED TO FORM URL TO RETURN TO ROOT DASHBOARD WINDOW
 }
 
+/////////////////////
+// SUBGROUP GETTER //
+/////////////////////
+
+// Get all subgroups with custom property location that are children of the group with ID rootGroup (39 in this case)
+requestVerb = 'GET';
+resourcePath = '/device/groups/';
+queryParameters = '?filter=parentId~' + rootGroup + '&fields=name,id';
+data = ''
+
+responseDict =  LMGET(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
+responseBody = responseDict.body;
+responseJSON = new JsonSlurper().parseText(responseBody);
+
+// subGroupArray holds a JSON object for each subgroup with properties name, id, and dashID to add
+subGroupArray = responseJSON.data.items;
+
+///////////////////////////////
+// SUBGROUP DASHBOARD POSTER //
+///////////////////////////////
+
+subGroupArray.each { item ->
+	dashName = item.name;
+	requestVerb = 'POST';
+	resourcePath = '/dashboard/dashboards';
+	queryParameters = '';
+	data = '{"name":"' + dashName + '","description":"","groupId":1,"sharable":true}';
+
+	// Attempt to POST a dashboard with the name of the root group
+	responseDict =  LMPOST(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
+
+	responseBody = responseDict.body;
+	output = new JsonSlurper().parseText(responseBody);
+
+	// Initialize variable to hold dashboard ID of dashboard with the name of the root group
+	dashId = null;
+	if(output.data == null) {
+		// IF OUTPUT DATA IS EMPTY, THEN A DASHBOARD OF THIS NAME EXISTS, GET ITS ID
+
+		requestVerb = 'GET';
+		resourcePath = '/dashboard/dashboards';
+		queryParameters = '?filter=name~' + dashName;
+		data = '';
+
+		responseDict = LMGET(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
+		responseBody = responseDict.body;
+		responseJSON = new JsonSlurper().parseText(responseBody);
+		dashId = responseJSON.data.items[0].id;
+		// APPEND THE DASHID PROPERTY TO THE JSON MAPS IN SUBGROUPARRAY
+		item["dashId"] = dashId;
+	}
+	else {
+		dashId = output.data.id;
+		// APPEND THE DASHID PROPERTY TO THE JSON MAPS IN SUBGROUPARRAY
+		item["dashId"] = dashId;
+		// IF THERE IS DATA (FIRST RUN) THEN CAPTURE ID OF ROOT DASH
+		// THIS ID WILL BE USED TO FORM URL TO RETURN TO ROOT DASHBOARD WINDOW
+	}
+}
+
+///////////////////////////
+// SUBGROUP TEXT WIDGETS //
+///////////////////////////
+
+subGroupArray.each { item ->
+	// First see if root dash has an existing text widget with the name rootGroupName_menu
+	requestVerb = 'GET';
+	resourcePath = '/dashboard/dashboards/' + item.dashId + '/widgets';
+	queryParameters = '?filter=name~' + item.name + '_menu';
+	data = ''
+
+	responseDict =  LMGET(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
+	responseBody = responseDict.body;
+	responseJSON = new JsonSlurper().parseText(responseBody);
+	textWidgetId = null;
+
+	// If root dash does not have a text widget, post one
+	if(responseJSON.data.total == 0) {
+		requestVerb = 'POST';
+		resourcePath = '/dashboard/widgets';
+		queryParameters = '';
+		//html = 'Hello World!';
+		html = "<a href='https://ianbloom.logicmonitor.com/santaba/uiv3/dashboard/index.jsp#dashboard=" + rootDashboardId + "' target='_top'>" + rootGroupName + "</a><br />"
+		data = '{"name":"' + item.name + '_menu","type":"text","dashboardId":"' + item.dashId + '","content":"' + html + '"}';
+
+		responseDict = LMPOST(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
+
+		responseBody = responseDict.body;
+		responseJSON = new JsonSlurper().parseText(responseBody);
+
+		// Capture textWidgetId
+		textWidgetId = responseJSON.data.id;
+
+	}
+	// If root dash DOES have a text widget, PUT to update
+	else {
+		textWidgetId = responseJSON.data.items[0].id;
+
+		requestVerb = 'PUT';
+		resourcePath = '/dashboard/widgets/' + textWidgetId;
+		queryParameters = '';
+		//html = 'I PUT THIS HERE';
+		html = "<a href='https://ianbloom.logicmonitor.com/santaba/uiv3/dashboard/index.jsp#dashboard=" + rootDashboardId + "' target='_top'>" + rootGroupName + "</a><br />"
+		data = '{"name":"' + item.name + '_menu","type":"text","dashboardId":"' + item.dashId + '","content":"' + html + '"}';
+
+		responseDict = LMPUT(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
+	}
+}
+
+
+//////////////////////////
+// SUBGROUP MAP WIDGETS //
+//////////////////////////
+
+subGroupArray.each { item ->
+	// First see if root dash has an existing text widget with the name rootGroupName_menu
+	requestVerb = 'GET';
+	resourcePath = '/dashboard/dashboards/' + item.dashId + '/widgets';
+	queryParameters = '?filter=name~' + item.name + '_map';
+	data = ''
+
+	responseDict =  LMGET(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
+	responseBody = responseDict.body;
+	responseJSON = new JsonSlurper().parseText(responseBody);
+	mapWidgetId = null;
+
+	// If root dash does not have a gmap widget, post one
+	if(responseJSON.data.total == 0) {
+		requestVerb = 'POST';
+		resourcePath = '/dashboard/widgets';
+		queryParameters = '';
+
+		mapPoints = '[{"type":"device","deviceGroupFullPath":"' + rootGroupName + '/' + item.name + '","deviceDisplayName":"*"}]';
+		data = '{"name":"' + item.name + '_map","type":"gmap","dashboardId":"' + item.dashId + '","mapPoints":' + mapPoints + '}';
+
+		responseDict = LMPOST(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
+	println("body . " + responseDict.body);
+	println("code . " + responseDict.code);
+
+		responseBody = responseDict.body;
+		responseJSON = new JsonSlurper().parseText(responseBody);
+
+		// Capture textWidgetId
+		mapWidgetId = responseJSON.data.id;
+	}
+	// If root dash DOES have a gmap widget, PUT to update
+	else {
+		mapWidgetId = responseJSON.data.items[0].id;
+
+		requestVerb = 'PUT';
+		resourcePath = '/dashboard/widgets/' + mapWidgetId;
+		queryParameters = '';
+
+		//mapPoints = '[{"type":"group","deviceGroupFullPath":"' + rootGroupName + '/' + item.name + '"}]'
+		mapPoints = '[{"type":"device","deviceGroupFullPath":"' + rootGroupName + '/' + item.name + '","deviceDisplayName":"*"}]';
+		data = '{"name":"' + item.name + '_map","type":"gmap","dashboardId":"' + item.dashId + '","mapPoints":' + mapPoints + '}';
+
+		responseDict = LMPUT(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
+	println("body . " + responseDict.body);
+	println("code . " + responseDict.code);
+	}
+}
+
 /////////////////
 // TEXT WIDGET //
 /////////////////
@@ -76,7 +239,8 @@ if(responseJSON.data.total == 0) {
 	requestVerb = 'POST';
 	resourcePath = '/dashboard/widgets';
 	queryParameters = '';
-	html = 'Hello World!';
+	//html = 'Hello World!';
+	html = "<a href='https://ianbloom.logicmonitor.com/santaba/uiv3/dashboard/index.jsp#dashboard=68' target='_self'>USA</a>";
 	data = '{"name":"' + rootGroupName + '_menu","type":"text","dashboardId":"' + rootDashboardId + '","content":"' + html + '"}';
 
 	responseDict = LMPOST(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
@@ -95,8 +259,12 @@ else {
 	requestVerb = 'PUT';
 	resourcePath = '/dashboard/widgets/' + textWidgetId;
 	queryParameters = '';
-	html = 'I PUT THIS HERE';
-	data = '{"name":"' + rootGroupName + '_map","type":"gmap","dashboardId":"' + rootDashboardId + '","content":"' + html + '"}';
+	//html = 'I PUT THIS HERE';
+	html = "";
+	subGroupArray.each { item ->
+		html += "<a href='https://ianbloom.logicmonitor.com/santaba/uiv3/dashboard/index.jsp#dashboard=" + item.dashId + "' target='_top'>" + item.name + "</a><br />";
+	}
+	data = '{"name":"' + rootGroupName + '_menu","type":"text","dashboardId":"' + rootDashboardId + '","content":"' + html + '"}';
 
 	responseDict = LMPUT(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
 }
@@ -114,7 +282,7 @@ data = ''
 responseDict =  LMGET(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
 responseBody = responseDict.body;
 responseJSON = new JsonSlurper().parseText(responseBody);
-textWidgetId = null;
+mapWidgetId = null;
 
 // If root dash does not have a gmap widget, post one
 if(responseJSON.data.total == 0) {
@@ -122,7 +290,17 @@ if(responseJSON.data.total == 0) {
 	resourcePath = '/dashboard/widgets';
 	queryParameters = '';
 
-	mapPoints = '[{"type":"group","deviceGroupFullPath":"' + rootGroupName + '"}]'
+	//mapPoints = '[{"type":"group","deviceGroupFullPath":"' + rootGroupName + '"}]'
+	mapPoints = '[';
+	subGroupArray.each { item ->
+		if(item == subGroupArray.last()) {
+			mapPoints += '{"type":"group","deviceGroupFullPath":"' + rootGroupName + '/' + item.name + '"}'
+		}
+		else {
+			mapPoints += '{"type":"group","deviceGroupFullPath":"' + rootGroupName + '/' + item.name + '"},';
+		}
+	}
+	mapPoints += ']';
 	data = '{"name":"' + rootGroupName + '_map","type":"gmap","dashboardId":"' + rootDashboardId + '","mapPoints":' + mapPoints + '}';
 
 	responseDict = LMPOST(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
@@ -141,15 +319,21 @@ else {
 	resourcePath = '/dashboard/widgets/' + mapWidgetId;
 	queryParameters = '';
 
-	mapPoints = '[{"type":"group","deviceGroupFullPath":"' + rootGroupName + '"}]'
+	//mapPoints = '[{"type":"group","deviceGroupFullPath":"' + rootGroupName + '"}]'
+	mapPoints = '[';
+	subGroupArray.each { item ->
+		if(item == subGroupArray.last()) {
+			mapPoints += '{"type":"group","deviceGroupFullPath":"' + rootGroupName + '/' + item.name + '"}'
+		}
+		else {
+			mapPoints += '{"type":"group","deviceGroupFullPath":"' + rootGroupName + '/' + item.name + '"},';
+		}
+	}
+	mapPoints += ']';
 	data = '{"name":"' + rootGroupName + '_map","type":"gmap","dashboardId":"' + rootDashboardId + '","mapPoints":' + mapPoints + '}';
 
 	responseDict = LMPUT(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
 }
-
-
-
-
 
 
 
