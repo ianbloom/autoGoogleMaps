@@ -27,7 +27,10 @@ customer would like the script to consider the root of the tree.  In this case, 
 ![Optional Text](https://github.com/ianbloom/autoGoogleMaps/blob/master/readmePictures/Screen%20Shot%202018-03-28%20at%202.41.36%20PM.png)
 
 Finally, the dashgroupname refers to the name of the
-dashboard group that the customer would like the script to create these dashboards in.
+dashboard group that the customer would like the script to create these dashboards in.  In this case, the dashboard group is
+"Location_Dashboards".
+
+![Optional Text](https://github.com/ianbloom/autoGoogleMaps/blob/master/readmePictures/Screen%20Shot%202018-03-28%20at%202.43.11%20PM.png)
 
 ### Helper Functions
 
