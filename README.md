@@ -9,6 +9,22 @@ dashboards.
 
 ## The Process
 
+### Device Properties
+
+The user must define the following device properties for the device that the DataSource is applied to:
+
+* lmaccess.id
+* lmaccess.key
+* lmaccount
+* rootgroupname
+* rootgroupid
+* dashgroupname
+
+The lmaccess.id and lmaccess.key correspond to a user's API credentials.  The lmaccount refers to the ### in a customer's
+###.logicmonitor.com URL.  The rootgroupname/rootgroupid refer to the name/id of the group in the device tree that the 
+customer would like the script to consider the root of the tree.  Finally, the dashgroupname refers to the name of the
+dashboard group that the customer would like the script to create these dashboards in.
+
 ### Helper Functions
 
 In order to make efficient use of my time, I wrote helper functions for making HTTP requests to the LogicMonitor API.  The 
