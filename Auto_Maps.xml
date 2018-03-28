@@ -1,0 +1,587 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<feed  version="1.0" hasPendingRequests="false" >
+  <company></company>
+  <status>200</status>
+  <errmsg>OK</errmsg>
+  <interval>0</interval>
+    <entry type="predatasource">
+        <version>1522271917</version>
+        <name>Auto Maps</name>
+        <displayedas>Auto Maps</displayedas>
+        <description>This DataSource queries a user defined root group (rootgroupname, rootgroupid), scrubs the root group for subgroups, and creates dashboards for these groups containing a menu widget and a Google Maps widget.  These dashboards are created in the user defined dashboard group (dashgroupname).</description>
+        <collector>script</collector>
+        <hasMultiInstances>false</hasMultiInstances>
+        <schedule>180</schedule>
+        <appliesTo>system.displayname == &#34;Amazon EC2 SNMP&#34;</appliesTo>
+        <wildcardauto>false</wildcardauto>
+        <wildcardpersist>false</wildcardpersist>
+        <wildcardlinuxscript></wildcardlinuxscript>
+        <wildcardlinuxcmdline></wildcardlinuxcmdline>
+        <wildcardwinscript></wildcardwinscript>
+        <wildcardwincmdline></wildcardwincmdline>
+        <wildcardgroovyscript></wildcardgroovyscript>
+        <wildcardschedule>1440</wildcardschedule>
+        <wildcarddisable>false</wildcarddisable>
+        <wildcarddeleteinactive>false</wildcarddeleteinactive>
+        <agdmethod>none</agdmethod>
+        <agdparams></agdparams>
+        <group></group>
+        <tags></tags>
+        <technology>The user must define lmaccess.id, lmaccess.key, lmaccount, rootgroupname, rootgroupid, and dashgroupname as device properties for the device this DataSource is applied to.</technology>
+        <adlist><![CDATA[{"agdmethod":"none","agdparams":"","id":0,"filters":[],"params":{}}]]></adlist>
+        <schemaVersion>2</schemaVersion>
+        <dataSourceType>1</dataSourceType>
+        <attributes>
+        <attribute>
+            <name>scripttype</name>
+            <value>embed</value>
+            <comment></comment>
+        </attribute>
+        <attribute>
+            <name>scriptgroovy</name>
+            <value>import org.apache.http.HttpEntity;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.client.methods.HttpPut;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients
+import org.apache.http.util.EntityUtils;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+import org.apache.commons.codec.binary.Hex;
+import groovy.json.JsonSlurper;
+import org.apache.http.entity.StringEntity;
+import org.apache.http.entity.ContentType;
+
+def accessId = hostProps.get(&#34;lmaccess.id&#34;);
+def accessKey = hostProps.get(&#34;lmaccess.key&#34;);
+def account = hostProps.get(&#34;lmaccount&#34;);
+def rootGroupName = hostProps.get(&#34;rootgroupname&#34;);
+def rootGroup = hostProps.get(&#34;rootgroupid&#34;);
+def dashGroup = hostProps.get(&#34;dashgroupname&#34;);
+
+// Attempt to create a dashboard group to hold all dashboards.  If it exists, capture ID, if not, create and capture ID.
+
+requestVerb = &#39;POST&#39;;
+resourcePath = &#39;/dashboard/groups&#39;;
+queryParameters = &#39;&#39;;
+data = &#39;{&#34;name&#34;:&#34;&#39; + dashGroup + &#39;&#34;}&#39;;
+
+// First we attempt to POST a dashboard group with the name dashGroup
+responseDict =  LMPOST(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
+
+responseBody = responseDict.body;
+output = new JsonSlurper().parseText(responseBody);
+
+// Initialize dashGroupId variable
+dashGroupId = null;
+// If this dashboard group already exists, then GET its ID
+if(output.data == null) {
+	requestVerb = &#39;GET&#39;;
+	resourcePath = &#39;/dashboard/groups&#39;;
+	queryParameters = &#39;?filter=name~&#39; + dashGroup;
+	data = &#39;&#39;;
+
+	responseDict = LMGET(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
+	responseBody = responseDict.body;
+	responseJSON = new JsonSlurper().parseText(responseBody);
+	dashGroupId = responseJSON.data.items[0].id;
+}
+// If this dashboard group does not already exist, lets capture this ID
+else {
+	dashGroupId = output.data.id;
+}
+
+
+// First we create a dashboard with the name of the root group and capture its dashboard ID
+//
+// If this dashboard already exists, we execute a GET request to obtain the dashboard name
+
+requestVerb = &#39;POST&#39;;
+resourcePath = &#39;/dashboard/dashboards&#39;;
+queryParameters = &#39;&#39;;
+data = &#39;{&#34;name&#34;:&#34;&#39; + rootGroupName + &#39;&#34;,&#34;description&#34;:&#34;&#34;,&#34;groupId&#34;:&#39; + dashGroupId + &#39;,&#34;sharable&#34;:true}&#39;;
+
+// Attempt to POST a dashboard with the name of the root group
+responseDict =  LMPOST(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
+
+responseBody = responseDict.body;
+output = new JsonSlurper().parseText(responseBody);
+
+// Initialize variable to hold dashboard ID of dashboard with the name of the root group
+rootDashboardId = null;
+if(output.data == null) {
+	// IF OUTPUT DATA IS EMPTY, THEN A DASHBOARD OF THIS NAME EXISTS, GET ITS ID
+
+	requestVerb = &#39;GET&#39;;
+	resourcePath = &#39;/dashboard/dashboards&#39;;
+	queryParameters = &#39;?filter=name~&#39; + rootGroupName + &#39;&#38;filter=groupId~&#39; + dashGroupId;
+	data = &#39;&#39;;
+
+	responseDict = LMGET(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
+	responseBody = responseDict.body;
+	responseJSON = new JsonSlurper().parseText(responseBody);
+	rootDashboardId = responseJSON.data.items[0].id;
+}
+else {
+	rootDashboardId = output.data.id;
+	// IF THERE IS DATA (FIRST RUN) THEN CAPTURE ID OF ROOT DASH
+	// THIS ID WILL BE USED TO FORM URL TO RETURN TO ROOT DASHBOARD WINDOW
+}
+
+/////////////////////
+// SUBGROUP GETTER //
+/////////////////////
+
+// Get all subgroups with custom property location that are children of the group with ID rootGroup (39 in this case)
+requestVerb = &#39;GET&#39;;
+resourcePath = &#39;/device/groups/&#39;;
+queryParameters = &#39;?filter=parentId~&#39; + rootGroup + &#39;&#38;fields=name,id&#39;;
+data = &#39;&#39;
+
+responseDict =  LMGET(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
+responseBody = responseDict.body;
+responseJSON = new JsonSlurper().parseText(responseBody);
+
+// subGroupArray holds a JSON object for each subgroup with properties name, id, and dashID to add
+subGroupArray = responseJSON.data.items;
+
+///////////////////////////////
+// SUBGROUP DASHBOARD POSTER //
+///////////////////////////////
+
+subGroupArray.each { item -&#62;
+	dashName = item.name;
+	requestVerb = &#39;POST&#39;;
+	resourcePath = &#39;/dashboard/dashboards&#39;;
+	queryParameters = &#39;&#39;;
+	data = &#39;{&#34;name&#34;:&#34;&#39; + dashName + &#39;&#34;,&#34;description&#34;:&#34;&#34;,&#34;groupId&#34;:&#39; + dashGroupId + &#39;,&#34;sharable&#34;:true}&#39;;
+
+	// Attempt to POST a dashboard with the name of the root group
+	responseDict =  LMPOST(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
+
+	responseBody = responseDict.body;
+	output = new JsonSlurper().parseText(responseBody);
+
+	// Initialize variable to hold dashboard ID of dashboard with the name of the root group
+	dashId = null;
+	if(output.data == null) {
+		// IF OUTPUT DATA IS EMPTY, THEN A DASHBOARD OF THIS NAME EXISTS, GET ITS ID
+
+		requestVerb = &#39;GET&#39;;
+		resourcePath = &#39;/dashboard/dashboards&#39;;
+		queryParameters = &#39;?filter=name~&#39; + dashName + &#39;&#38;filter=groupId~&#39; + dashGroupId;
+		data = &#39;&#39;;
+
+		responseDict = LMGET(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
+		responseBody = responseDict.body;
+		responseJSON = new JsonSlurper().parseText(responseBody);
+		dashId = responseJSON.data.items[0].id;
+		// APPEND THE DASHID PROPERTY TO THE JSON MAPS IN SUBGROUPARRAY
+		item[&#34;dashId&#34;] = dashId;
+	}
+	else {
+		dashId = output.data.id;
+		// APPEND THE DASHID PROPERTY TO THE JSON MAPS IN SUBGROUPARRAY
+		item[&#34;dashId&#34;] = dashId;
+		// IF THERE IS DATA (FIRST RUN) THEN CAPTURE ID OF ROOT DASH
+		// THIS ID WILL BE USED TO FORM URL TO RETURN TO ROOT DASHBOARD WINDOW
+	}
+}
+
+///////////////////////////
+// SUBGROUP TEXT WIDGETS //
+///////////////////////////
+
+subGroupArray.each { item -&#62;
+	// First see if root dash has an existing text widget with the name rootGroupName_menu
+	requestVerb = &#39;GET&#39;;
+	resourcePath = &#39;/dashboard/dashboards/&#39; + item.dashId + &#39;/widgets&#39;;
+	queryParameters = &#39;?filter=name~&#39; + item.name + &#39;_menu&#39;;
+	data = &#39;&#39;
+
+	responseDict =  LMGET(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
+	responseBody = responseDict.body;
+	responseJSON = new JsonSlurper().parseText(responseBody);
+	textWidgetId = null;
+
+	// If root dash does not have a text widget, post one
+	if(responseJSON.data.total == 0) {
+		requestVerb = &#39;POST&#39;;
+		resourcePath = &#39;/dashboard/widgets&#39;;
+		queryParameters = &#39;&#39;;
+		//html = &#39;Hello World!&#39;;
+		html = &#34;&#60;a href=&#39;https://ianbloom.logicmonitor.com/santaba/uiv3/dashboard/index.jsp#dashboard=&#34; + rootDashboardId + &#34;&#39; target=&#39;_top&#39;&#62;&#34; + rootGroupName + &#34;&#60;/a&#62;&#60;br /&#62;&#34;
+		data = &#39;{&#34;name&#34;:&#34;&#39; + item.name + &#39;_menu&#34;,&#34;type&#34;:&#34;text&#34;,&#34;dashboardId&#34;:&#34;&#39; + item.dashId + &#39;&#34;,&#34;content&#34;:&#34;&#39; + html + &#39;&#34;,&#34;rowSpan&#34;:2}&#39;;
+
+		responseDict = LMPOST(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
+
+		responseBody = responseDict.body;
+		responseJSON = new JsonSlurper().parseText(responseBody);
+		println(&#39;body . &#39; + responseDict.body);
+
+		// Capture textWidgetId
+		textWidgetId = responseJSON.data.id;
+
+	}
+	// If root dash DOES have a text widget, PUT to update
+	else {
+		textWidgetId = responseJSON.data.items[0].id;
+
+		requestVerb = &#39;PUT&#39;;
+		resourcePath = &#39;/dashboard/widgets/&#39; + textWidgetId;
+		queryParameters = &#39;&#39;;
+		//html = &#39;I PUT THIS HERE&#39;;
+		html = &#34;&#60;a href=&#39;https://ianbloom.logicmonitor.com/santaba/uiv3/dashboard/index.jsp#dashboard=&#34; + rootDashboardId + &#34;&#39; target=&#39;_top&#39;&#62;&#34; + rootGroupName + &#34;&#60;/a&#62;&#60;br /&#62;&#34;
+		data = &#39;{&#34;name&#34;:&#34;&#39; + item.name + &#39;_menu&#34;,&#34;type&#34;:&#34;text&#34;,&#34;dashboardId&#34;:&#34;&#39; + item.dashId + &#39;&#34;,&#34;content&#34;:&#34;&#39; + html + &#39;&#34;,&#34;rowSpan&#34;:2}&#39;;
+
+		responseDict = LMPUT(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
+	}
+}
+
+
+//////////////////////////
+// SUBGROUP MAP WIDGETS //
+//////////////////////////
+
+subGroupArray.each { item -&#62;
+	// First see if root dash has an existing text widget with the name rootGroupName_menu
+	requestVerb = &#39;GET&#39;;
+	resourcePath = &#39;/dashboard/dashboards/&#39; + item.dashId + &#39;/widgets&#39;;
+	queryParameters = &#39;?filter=name~&#39; + item.name + &#39;_map&#39;;
+	data = &#39;&#39;
+
+	responseDict =  LMGET(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
+	responseBody = responseDict.body;
+	responseJSON = new JsonSlurper().parseText(responseBody);
+	mapWidgetId = null;
+
+	// If root dash does not have a gmap widget, post one
+	if(responseJSON.data.total == 0) {
+		requestVerb = &#39;POST&#39;;
+		resourcePath = &#39;/dashboard/widgets&#39;;
+		queryParameters = &#39;&#39;;
+
+		mapPoints = &#39;[{&#34;type&#34;:&#34;device&#34;,&#34;deviceGroupFullPath&#34;:&#34;&#39; + rootGroupName + &#39;/&#39; + item.name + &#39;&#34;,&#34;deviceDisplayName&#34;:&#34;*&#34;}]&#39;;
+		data = &#39;{&#34;name&#34;:&#34;&#39; + item.name + &#39;_map&#34;,&#34;type&#34;:&#34;gmap&#34;,&#34;dashboardId&#34;:&#34;&#39; + item.dashId + &#39;&#34;,&#34;mapPoints&#34;:&#39; + mapPoints + &#39;,&#34;rowSpan&#34;:2,&#34;colSpan&#34;:2}&#39;;
+
+		responseDict = LMPOST(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
+
+		responseBody = responseDict.body;
+		responseJSON = new JsonSlurper().parseText(responseBody);
+
+		// Capture textWidgetId
+		mapWidgetId = responseJSON.data.id;
+	}
+	// If root dash DOES have a gmap widget, PUT to update
+	else {
+		mapWidgetId = responseJSON.data.items[0].id;
+
+		requestVerb = &#39;PUT&#39;;
+		resourcePath = &#39;/dashboard/widgets/&#39; + mapWidgetId;
+		queryParameters = &#39;&#39;;
+
+		//mapPoints = &#39;[{&#34;type&#34;:&#34;group&#34;,&#34;deviceGroupFullPath&#34;:&#34;&#39; + rootGroupName + &#39;/&#39; + item.name + &#39;&#34;}]&#39;
+		mapPoints = &#39;[{&#34;type&#34;:&#34;device&#34;,&#34;deviceGroupFullPath&#34;:&#34;&#39; + rootGroupName + &#39;/&#39; + item.name + &#39;&#34;,&#34;deviceDisplayName&#34;:&#34;*&#34;}]&#39;;
+		data = &#39;{&#34;name&#34;:&#34;&#39; + item.name + &#39;_map&#34;,&#34;type&#34;:&#34;gmap&#34;,&#34;dashboardId&#34;:&#34;&#39; + item.dashId + &#39;&#34;,&#34;mapPoints&#34;:&#39; + mapPoints + &#39;,&#34;rowSpan&#34;:2,&#34;colSpan&#34;:2}&#39;;
+
+		responseDict = LMPUT(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
+	}
+}
+
+/////////////////
+// TEXT WIDGET //
+/////////////////
+
+// First see if root dash has an existing text widget with the name rootGroupName_menu
+requestVerb = &#39;GET&#39;;
+resourcePath = &#39;/dashboard/dashboards/&#39; + rootDashboardId + &#39;/widgets&#39;;
+queryParameters = &#39;?filter=name~&#39; + rootGroupName + &#39;_menu&#39;;
+data = &#39;&#39;
+
+responseDict =  LMGET(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
+responseBody = responseDict.body;
+responseJSON = new JsonSlurper().parseText(responseBody);
+textWidgetId = null;
+
+// If root dash does not have a text widget, post one
+if(responseJSON.data.total == 0) {
+	requestVerb = &#39;POST&#39;;
+	resourcePath = &#39;/dashboard/widgets&#39;;
+	queryParameters = &#39;&#39;;
+	//html = &#39;Hello World!&#39;;
+	html = &#34;&#34;;
+	subGroupArray.each { item -&#62;
+		html += &#34;&#60;a href=&#39;https://ianbloom.logicmonitor.com/santaba/uiv3/dashboard/index.jsp#dashboard=&#34; + item.dashId + &#34;&#39; target=&#39;_top&#39;&#62;&#34; + item.name + &#34;&#60;/a&#62;&#60;br /&#62;&#34;;
+	}
+	data = &#39;{&#34;name&#34;:&#34;&#39; + rootGroupName + &#39;_menu&#34;,&#34;type&#34;:&#34;text&#34;,&#34;dashboardId&#34;:&#34;&#39; + rootDashboardId + &#39;&#34;,&#34;content&#34;:&#34;&#39; + html + &#39;&#34;,&#34;rowSpan&#34;:2}&#39;;
+
+	responseDict = LMPOST(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
+
+	responseBody = responseDict.body;
+	responseJSON = new JsonSlurper().parseText(responseBody);
+
+	// Capture textWidgetId
+	textWidgetId = responseJSON.data.id;
+
+}
+// If root dash DOES have a text widget, PUT to update
+else {
+	textWidgetId = responseJSON.data.items[0].id;
+
+	requestVerb = &#39;PUT&#39;;
+	resourcePath = &#39;/dashboard/widgets/&#39; + textWidgetId;
+	queryParameters = &#39;&#39;;
+	//html = &#39;I PUT THIS HERE&#39;;
+	html = &#34;&#34;;
+	subGroupArray.each { item -&#62;
+		html += &#34;&#60;a href=&#39;https://ianbloom.logicmonitor.com/santaba/uiv3/dashboard/index.jsp#dashboard=&#34; + item.dashId + &#34;&#39; target=&#39;_top&#39;&#62;&#34; + item.name + &#34;&#60;/a&#62;&#60;br /&#62;&#34;;
+	}
+	data = &#39;{&#34;name&#34;:&#34;&#39; + rootGroupName + &#39;_menu&#34;,&#34;type&#34;:&#34;text&#34;,&#34;dashboardId&#34;:&#34;&#39; + rootDashboardId + &#39;&#34;,&#34;content&#34;:&#34;&#39; + html + &#39;&#34;,&#34;rowSpan&#34;:2}&#39;;
+
+	responseDict = LMPUT(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
+}
+
+////////////////
+// MAP WIDGET //
+////////////////
+
+// First see if root dash has an existing text widget with the name rootGroupName_menu
+requestVerb = &#39;GET&#39;;
+resourcePath = &#39;/dashboard/dashboards/&#39; + rootDashboardId + &#39;/widgets&#39;;
+queryParameters = &#39;?filter=name~&#39; + rootGroupName + &#39;_map&#39;;
+data = &#39;&#39;
+
+responseDict =  LMGET(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
+responseBody = responseDict.body;
+responseJSON = new JsonSlurper().parseText(responseBody);
+mapWidgetId = null;
+
+// If root dash does not have a gmap widget, post one
+if(responseJSON.data.total == 0) {
+	requestVerb = &#39;POST&#39;;
+	resourcePath = &#39;/dashboard/widgets&#39;;
+	queryParameters = &#39;&#39;;
+
+	//mapPoints = &#39;[{&#34;type&#34;:&#34;group&#34;,&#34;deviceGroupFullPath&#34;:&#34;&#39; + rootGroupName + &#39;&#34;}]&#39;
+	mapPoints = &#39;[&#39;;
+	subGroupArray.each { item -&#62;
+		if(item == subGroupArray.last()) {
+			mapPoints += &#39;{&#34;type&#34;:&#34;group&#34;,&#34;deviceGroupFullPath&#34;:&#34;&#39; + rootGroupName + &#39;/&#39; + item.name + &#39;&#34;}&#39;
+		}
+		else {
+			mapPoints += &#39;{&#34;type&#34;:&#34;group&#34;,&#34;deviceGroupFullPath&#34;:&#34;&#39; + rootGroupName + &#39;/&#39; + item.name + &#39;&#34;},&#39;;
+		}
+	}
+	mapPoints += &#39;]&#39;;
+	data = &#39;{&#34;name&#34;:&#34;&#39; + rootGroupName + &#39;_map&#34;,&#34;type&#34;:&#34;gmap&#34;,&#34;dashboardId&#34;:&#34;&#39; + rootDashboardId + &#39;&#34;,&#34;mapPoints&#34;:&#39; + mapPoints + &#39;,&#34;rowSpan&#34;:2,&#34;colSpan&#34;:2}&#39;;
+
+	responseDict = LMPOST(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
+
+	responseBody = responseDict.body;
+	responseJSON = new JsonSlurper().parseText(responseBody);
+
+	// Capture textWidgetId
+	mapWidgetId = responseJSON.data.id;
+}
+// If root dash DOES have a gmap widget, PUT to update
+else {
+	mapWidgetId = responseJSON.data.items[0].id;
+
+	requestVerb = &#39;PUT&#39;;
+	resourcePath = &#39;/dashboard/widgets/&#39; + mapWidgetId;
+	queryParameters = &#39;&#39;;
+
+	//mapPoints = &#39;[{&#34;type&#34;:&#34;group&#34;,&#34;deviceGroupFullPath&#34;:&#34;&#39; + rootGroupName + &#39;&#34;}]&#39;
+	mapPoints = &#39;[&#39;;
+	subGroupArray.each { item -&#62;
+		if(item == subGroupArray.last()) {
+			mapPoints += &#39;{&#34;type&#34;:&#34;group&#34;,&#34;deviceGroupFullPath&#34;:&#34;&#39; + rootGroupName + &#39;/&#39; + item.name + &#39;&#34;}&#39;
+		}
+		else {
+			mapPoints += &#39;{&#34;type&#34;:&#34;group&#34;,&#34;deviceGroupFullPath&#34;:&#34;&#39; + rootGroupName + &#39;/&#39; + item.name + &#39;&#34;},&#39;;
+		}
+	}
+	mapPoints += &#39;]&#39;;
+	data = &#39;{&#34;name&#34;:&#34;&#39; + rootGroupName + &#39;_map&#34;,&#34;type&#34;:&#34;gmap&#34;,&#34;dashboardId&#34;:&#34;&#39; + rootDashboardId + &#39;&#34;,&#34;mapPoints&#34;:&#39; + mapPoints + &#39;,&#34;rowSpan&#34;:2,&#34;colSpan&#34;:2}&#39;;
+
+	responseDict = LMPUT(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
+}
+
+
+
+
+
+/////////////////////////////////////
+// Santa&#39;s Little Helper Functions //
+/////////////////////////////////////
+
+def LMPUT(_accessId, _accessKey, _account, _requestVerb, _resourcePath, _queryParameters, _data) {
+
+	// Initialize dictionary to hold response code and response body
+	responseDict = [:];
+
+	// Construcst URL to POST to from specified input
+	url = &#39;https://&#39; + _account + &#39;.logicmonitor.com&#39; + &#39;/santaba/rest&#39; + _resourcePath + _queryParameters;
+
+	StringEntity params = new StringEntity(_data,ContentType.APPLICATION_JSON);
+
+	// Get current time
+	epoch = System.currentTimeMillis();
+
+	// Calculate signature
+	requestVars = _requestVerb + epoch + _data + _resourcePath;
+
+	hmac = Mac.getInstance(&#39;HmacSHA256&#39;);
+	secret = new SecretKeySpec(_accessKey.getBytes(), &#39;HmacSHA256&#39;);
+	hmac.init(secret);
+	hmac_signed = Hex.encodeHexString(hmac.doFinal(requestVars.getBytes()));
+	signature = hmac_signed.bytes.encodeBase64();
+
+	// HTTP Get
+	CloseableHttpClient httpclient = HttpClients.createDefault();
+	http_request = new HttpPut(url);
+	http_request.addHeader(&#34;Authorization&#34; , &#34;LMv1 &#34; + _accessId + &#34;:&#34; + signature + &#34;:&#34; + epoch);
+	http_request.setHeader(&#34;Accept&#34;, &#34;application/json&#34;);
+	http_request.setHeader(&#34;Content-type&#34;, &#34;application/json&#34;);
+	http_request.setEntity(params);
+	response = httpclient.execute(http_request);
+	responseBody = EntityUtils.toString(response.getEntity());
+	code = response.getStatusLine().getStatusCode();
+
+	responseDict[&#39;code&#39;] = code;
+	responseDict[&#39;body&#39;] = responseBody
+	
+	return responseDict;
+}
+
+def LMGET(_accessId, _accessKey, _account, _requestVerb, _resourcePath, _queryParameters, _data) {
+	// DATA SHOULD BE EMPTY
+	// Initialize dictionary to hold response code and response body
+	responseDict = [:];
+
+	// Construcst URL to POST to from specified input
+	url = &#39;https://&#39; + _account + &#39;.logicmonitor.com&#39; + &#39;/santaba/rest&#39; + _resourcePath + _queryParameters;
+
+	// Get current time
+	epoch = System.currentTimeMillis();
+
+	// Calculate signature
+	requestVars = _requestVerb + epoch + _data + _resourcePath;
+
+	hmac = Mac.getInstance(&#39;HmacSHA256&#39;);
+	secret = new SecretKeySpec(_accessKey.getBytes(), &#39;HmacSHA256&#39;);
+	hmac.init(secret);
+	hmac_signed = Hex.encodeHexString(hmac.doFinal(requestVars.getBytes()));
+	signature = hmac_signed.bytes.encodeBase64();
+
+	// HTTP Get
+	CloseableHttpClient httpclient = HttpClients.createDefault();
+	http_request = new HttpGet(url);
+	http_request.addHeader(&#34;Authorization&#34; , &#34;LMv1 &#34; + _accessId + &#34;:&#34; + signature + &#34;:&#34; + epoch);
+	response = httpclient.execute(http_request);
+	responseBody = EntityUtils.toString(response.getEntity());
+	code = response.getStatusLine().getStatusCode();
+
+	responseDict[&#39;code&#39;] = code;
+	responseDict[&#39;body&#39;] = responseBody
+	
+	return responseDict;
+}
+
+def LMPOST(_accessId, _accessKey, _account, _requestVerb, _resourcePath, _queryParameters, _data) {
+
+	// Initialize dictionary to hold response code and response body
+	responseDict = [:];
+
+	// Construcst URL to POST to from specified input
+	url = &#39;https://&#39; + _account + &#39;.logicmonitor.com&#39; + &#39;/santaba/rest&#39; + _resourcePath + _queryParameters;
+
+	StringEntity params = new StringEntity(_data,ContentType.APPLICATION_JSON);
+
+	// Get current time
+	epoch = System.currentTimeMillis();
+
+	// Calculate signature
+	requestVars = _requestVerb + epoch + _data + _resourcePath;
+
+	hmac = Mac.getInstance(&#39;HmacSHA256&#39;);
+	secret = new SecretKeySpec(_accessKey.getBytes(), &#39;HmacSHA256&#39;);
+	hmac.init(secret);
+	hmac_signed = Hex.encodeHexString(hmac.doFinal(requestVars.getBytes()));
+	signature = hmac_signed.bytes.encodeBase64();
+
+	// HTTP Get
+	CloseableHttpClient httpclient = HttpClients.createDefault();
+	http_request = new HttpPost(url);
+	http_request.addHeader(&#34;Authorization&#34; , &#34;LMv1 &#34; + _accessId + &#34;:&#34; + signature + &#34;:&#34; + epoch);
+	http_request.setHeader(&#34;Accept&#34;, &#34;application/json&#34;);
+	http_request.setHeader(&#34;Content-type&#34;, &#34;application/json&#34;);
+	http_request.setEntity(params);
+	response = httpclient.execute(http_request);
+	responseBody = EntityUtils.toString(response.getEntity());
+	code = response.getStatusLine().getStatusCode();
+
+	responseDict[&#39;code&#39;] = code;
+	responseDict[&#39;body&#39;] = responseBody
+	
+	return responseDict;
+}
+
+return 0;</value>
+            <comment></comment>
+        </attribute>
+        <attribute>
+            <name>windowsscript</name>
+            <value></value>
+            <comment></comment>
+        </attribute>
+        <attribute>
+            <name>linuxscript</name>
+            <value></value>
+            <comment></comment>
+        </attribute>
+        <attribute>
+            <name>windowscmdline</name>
+            <value></value>
+            <comment></comment>
+        </attribute>
+        <attribute>
+            <name>linuxcmdline</name>
+            <value></value>
+            <comment></comment>
+        </attribute>
+        </attributes>
+        <datapoints>
+        <datapoint>
+            <name>exitCode</name>
+            <dataType>4</dataType>
+            <type>2</type>
+            <postprocessormethod>none</postprocessormethod>
+            <postprocessorparam></postprocessorparam>
+            <usevalue>exitCode</usevalue>
+            <alertexpr></alertexpr>
+            <alertmissing>1</alertmissing>
+            <alertsubject></alertsubject>
+            <alertbody></alertbody>
+            <description></description>
+            <maxvalue></maxvalue>
+            <minvalue></minvalue>
+            <userparam1></userparam1>
+            <userparam2></userparam2>
+            <userparam3></userparam3>
+            <iscomposite>false</iscomposite>
+            <rpn></rpn>
+            <alertTransitionIval>0</alertTransitionIval>
+            <alertClearTransitionIval>0</alertClearTransitionIval>
+        </datapoint>
+        </datapoints>
+        <graphs>
+        </graphs>
+        <overviewgraphs>
+        </overviewgraphs>
+        <scripts>
+        </scripts>
+    </entry>
+</feed>

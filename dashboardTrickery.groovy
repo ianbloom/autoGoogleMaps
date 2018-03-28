@@ -13,14 +13,12 @@ import groovy.json.JsonSlurper;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.entity.ContentType;
 
-//define credentials and url
-def accessId = 'dSpe6j9eTQXs3Iph7jCU'
-def accessKey = 'dcm!p2d2w79V=5f}+[354xL=g{k442Y6h5qV}C_6'
-def account = 'ianbloom'
-def rootGroupName = 'USA'
-def rootGroup = '39'
-// NOTE: dashGroup MAY NOT CONTAIN SPACES
-def dashGroup = 'Location_Dashboards'
+def accessId = hostProps.get("lmaccess.id");
+def accessKey = hostProps.get("lmaccess.key");
+def account = hostProps.get("lmaccount");
+def rootGroupName = hostProps.get("rootgroupname");
+def rootGroup = hostProps.get("rootgroupid");
+def dashGroup = hostProps.get("dashgroupname");
 
 // Attempt to create a dashboard group to hold all dashboards.  If it exists, capture ID, if not, create and capture ID.
 
