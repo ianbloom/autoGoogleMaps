@@ -7,6 +7,8 @@ corresponding to groups in the device tree.  These dashboards each contain two w
 with map points corresponding to subgroups/devices.  The other widget is a text widget containing links to the other
 dashboards.
 
+![Optional Text](https://github.com/ianbloom/autoGoogleMaps/blob/master/readmePictures/Screen%20Shot%202018-03-28%20at%202.48.10%20PM.png)
+
 ## The Process
 
 ### Device Properties
