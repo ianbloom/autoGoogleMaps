@@ -53,7 +53,6 @@ if(output.data == null) {
 else {
 	dashGroupId = output.data.id;
 }
-println('dashgroup . ' + dashGroupId);
 
 
 // First we create a dashboard with the name of the root group and capture its dashboard ID
@@ -175,12 +174,13 @@ subGroupArray.each { item ->
 		queryParameters = '';
 		//html = 'Hello World!';
 		html = "<a href='https://ianbloom.logicmonitor.com/santaba/uiv3/dashboard/index.jsp#dashboard=" + rootDashboardId + "' target='_top'>" + rootGroupName + "</a><br />"
-		data = '{"name":"' + item.name + '_menu","type":"text","dashboardId":"' + item.dashId + '","content":"' + html + '"}';
+		data = '{"name":"' + item.name + '_menu","type":"text","dashboardId":"' + item.dashId + '","content":"' + html + '","rowSpan":2}';
 
 		responseDict = LMPOST(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
 
 		responseBody = responseDict.body;
 		responseJSON = new JsonSlurper().parseText(responseBody);
+		println('body . ' + responseDict.body);
 
 		// Capture textWidgetId
 		textWidgetId = responseJSON.data.id;
@@ -195,7 +195,7 @@ subGroupArray.each { item ->
 		queryParameters = '';
 		//html = 'I PUT THIS HERE';
 		html = "<a href='https://ianbloom.logicmonitor.com/santaba/uiv3/dashboard/index.jsp#dashboard=" + rootDashboardId + "' target='_top'>" + rootGroupName + "</a><br />"
-		data = '{"name":"' + item.name + '_menu","type":"text","dashboardId":"' + item.dashId + '","content":"' + html + '"}';
+		data = '{"name":"' + item.name + '_menu","type":"text","dashboardId":"' + item.dashId + '","content":"' + html + '","rowSpan":2}';
 
 		responseDict = LMPUT(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
 	}
@@ -225,7 +225,7 @@ subGroupArray.each { item ->
 		queryParameters = '';
 
 		mapPoints = '[{"type":"device","deviceGroupFullPath":"' + rootGroupName + '/' + item.name + '","deviceDisplayName":"*"}]';
-		data = '{"name":"' + item.name + '_map","type":"gmap","dashboardId":"' + item.dashId + '","mapPoints":' + mapPoints + '}';
+		data = '{"name":"' + item.name + '_map","type":"gmap","dashboardId":"' + item.dashId + '","mapPoints":' + mapPoints + ',"rowSpan":2,"colSpan":2}';
 
 		responseDict = LMPOST(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
 
@@ -245,7 +245,7 @@ subGroupArray.each { item ->
 
 		//mapPoints = '[{"type":"group","deviceGroupFullPath":"' + rootGroupName + '/' + item.name + '"}]'
 		mapPoints = '[{"type":"device","deviceGroupFullPath":"' + rootGroupName + '/' + item.name + '","deviceDisplayName":"*"}]';
-		data = '{"name":"' + item.name + '_map","type":"gmap","dashboardId":"' + item.dashId + '","mapPoints":' + mapPoints + '}';
+		data = '{"name":"' + item.name + '_map","type":"gmap","dashboardId":"' + item.dashId + '","mapPoints":' + mapPoints + ',"rowSpan":2,"colSpan":2}';
 
 		responseDict = LMPUT(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
 	}
@@ -276,7 +276,7 @@ if(responseJSON.data.total == 0) {
 	subGroupArray.each { item ->
 		html += "<a href='https://ianbloom.logicmonitor.com/santaba/uiv3/dashboard/index.jsp#dashboard=" + item.dashId + "' target='_top'>" + item.name + "</a><br />";
 	}
-	data = '{"name":"' + rootGroupName + '_menu","type":"text","dashboardId":"' + rootDashboardId + '","content":"' + html + '"}';
+	data = '{"name":"' + rootGroupName + '_menu","type":"text","dashboardId":"' + rootDashboardId + '","content":"' + html + '","rowSpan":2}';
 
 	responseDict = LMPOST(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
 
@@ -299,7 +299,7 @@ else {
 	subGroupArray.each { item ->
 		html += "<a href='https://ianbloom.logicmonitor.com/santaba/uiv3/dashboard/index.jsp#dashboard=" + item.dashId + "' target='_top'>" + item.name + "</a><br />";
 	}
-	data = '{"name":"' + rootGroupName + '_menu","type":"text","dashboardId":"' + rootDashboardId + '","content":"' + html + '"}';
+	data = '{"name":"' + rootGroupName + '_menu","type":"text","dashboardId":"' + rootDashboardId + '","content":"' + html + '","rowSpan":2}';
 
 	responseDict = LMPUT(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
 }
@@ -336,7 +336,7 @@ if(responseJSON.data.total == 0) {
 		}
 	}
 	mapPoints += ']';
-	data = '{"name":"' + rootGroupName + '_map","type":"gmap","dashboardId":"' + rootDashboardId + '","mapPoints":' + mapPoints + '}';
+	data = '{"name":"' + rootGroupName + '_map","type":"gmap","dashboardId":"' + rootDashboardId + '","mapPoints":' + mapPoints + ',"rowSpan":2,"colSpan":2}';
 
 	responseDict = LMPOST(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
 
@@ -365,7 +365,7 @@ else {
 		}
 	}
 	mapPoints += ']';
-	data = '{"name":"' + rootGroupName + '_map","type":"gmap","dashboardId":"' + rootDashboardId + '","mapPoints":' + mapPoints + '}';
+	data = '{"name":"' + rootGroupName + '_map","type":"gmap","dashboardId":"' + rootDashboardId + '","mapPoints":' + mapPoints + ',"rowSpan":2,"colSpan":2}';
 
 	responseDict = LMPUT(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
 }
