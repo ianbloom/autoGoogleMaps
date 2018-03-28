@@ -19,15 +19,51 @@ def accessKey = 'dcm!p2d2w79V=5f}+[354xL=g{k442Y6h5qV}C_6'
 def account = 'ianbloom'
 def rootGroupName = 'USA'
 def rootGroup = '39'
+// NOTE: dashGroup MAY NOT CONTAIN SPACES
+def dashGroup = 'Location_Dashboards'
+
+// Attempt to create a dashboard group to hold all dashboards.  If it exists, capture ID, if not, create and capture ID.
+
+requestVerb = 'POST';
+resourcePath = '/dashboard/groups';
+queryParameters = '';
+data = '{"name":"' + dashGroup + '"}';
+
+// First we attempt to POST a dashboard group with the name dashGroup
+responseDict =  LMPOST(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
+
+responseBody = responseDict.body;
+output = new JsonSlurper().parseText(responseBody);
+
+// Initialize dashGroupId variable
+dashGroupId = null;
+// If this dashboard group already exists, then GET its ID
+if(output.data == null) {
+	requestVerb = 'GET';
+	resourcePath = '/dashboard/groups';
+	queryParameters = '?filter=name~' + dashGroup;
+	data = '';
+
+	responseDict = LMGET(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
+	responseBody = responseDict.body;
+	responseJSON = new JsonSlurper().parseText(responseBody);
+	dashGroupId = responseJSON.data.items[0].id;
+}
+// If this dashboard group does not already exist, lets capture this ID
+else {
+	dashGroupId = output.data.id;
+}
+println('dashgroup . ' + dashGroupId);
+
 
 // First we create a dashboard with the name of the root group and capture its dashboard ID
 //
 // If this dashboard already exists, we execute a GET request to obtain the dashboard name
 
-def requestVerb = 'POST';
-def resourcePath = '/dashboard/dashboards';
-def queryParameters = '';
-def data = '{"name":"' + rootGroupName + '","description":"","groupId":1,"sharable":true}';
+requestVerb = 'POST';
+resourcePath = '/dashboard/dashboards';
+queryParameters = '';
+data = '{"name":"' + rootGroupName + '","description":"","groupId":' + dashGroupId + ',"sharable":true}';
 
 // Attempt to POST a dashboard with the name of the root group
 responseDict =  LMPOST(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
@@ -42,7 +78,7 @@ if(output.data == null) {
 
 	requestVerb = 'GET';
 	resourcePath = '/dashboard/dashboards';
-	queryParameters = '?filter=name~USA';
+	queryParameters = '?filter=name~' + rootGroupName + '&filter=groupId~' + dashGroupId;
 	data = '';
 
 	responseDict = LMGET(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
@@ -82,7 +118,7 @@ subGroupArray.each { item ->
 	requestVerb = 'POST';
 	resourcePath = '/dashboard/dashboards';
 	queryParameters = '';
-	data = '{"name":"' + dashName + '","description":"","groupId":1,"sharable":true}';
+	data = '{"name":"' + dashName + '","description":"","groupId":' + dashGroupId + ',"sharable":true}';
 
 	// Attempt to POST a dashboard with the name of the root group
 	responseDict =  LMPOST(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
@@ -97,7 +133,7 @@ subGroupArray.each { item ->
 
 		requestVerb = 'GET';
 		resourcePath = '/dashboard/dashboards';
-		queryParameters = '?filter=name~' + dashName;
+		queryParameters = '?filter=name~' + dashName + '&filter=groupId~' + dashGroupId;
 		data = '';
 
 		responseDict = LMGET(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
@@ -192,8 +228,6 @@ subGroupArray.each { item ->
 		data = '{"name":"' + item.name + '_map","type":"gmap","dashboardId":"' + item.dashId + '","mapPoints":' + mapPoints + '}';
 
 		responseDict = LMPOST(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
-	println("body . " + responseDict.body);
-	println("code . " + responseDict.code);
 
 		responseBody = responseDict.body;
 		responseJSON = new JsonSlurper().parseText(responseBody);
@@ -214,8 +248,6 @@ subGroupArray.each { item ->
 		data = '{"name":"' + item.name + '_map","type":"gmap","dashboardId":"' + item.dashId + '","mapPoints":' + mapPoints + '}';
 
 		responseDict = LMPUT(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
-	println("body . " + responseDict.body);
-	println("code . " + responseDict.code);
 	}
 }
 
