@@ -22,7 +22,11 @@ The user must define the following device properties for the device that the Dat
 
 The lmaccess.id and lmaccess.key correspond to a user's API credentials.  The lmaccount refers to the ### in a customer's
 ###.logicmonitor.com URL.  The rootgroupname/rootgroupid refer to the name/id of the group in the device tree that the 
-customer would like the script to consider the root of the tree.  Finally, the dashgroupname refers to the name of the
+customer would like the script to consider the root of the tree.  In this case, that would be the 'USA' group.
+
+![Optional Text](https://github.com/ianbloom/autoGoogleMaps/blob/master/readmePictures/Screen%20Shot%202018-03-28%20at%202.41.36%20PM.png)
+
+Finally, the dashgroupname refers to the name of the
 dashboard group that the customer would like the script to create these dashboards in.
 
 ### Helper Functions
