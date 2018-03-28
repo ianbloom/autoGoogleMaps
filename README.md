@@ -18,8 +18,8 @@ close an HttpClient, and circumvent difficulties involved with making many API c
 ### The Nitty Gritty
 
 The user must define a number of properties on the device this script runs against.  The user must specify an API access ID,
-and API access key, the account we will be querying, the name of the group they would like the script to treat as the root, 
-and the root group's associated LogicMonitor group ID.
+and API access key, the account we will be querying, a dashboard group name, the name of the group they would like the 
+script to treat as the root, and the root group's associated LogicMonitor group ID.
 
 We first query the list of dashboards for a dashboard with the same name as the root group.  If this dashboard exists, we
 capture its ID, and if not, we create this dashboard.
