@@ -3,9 +3,9 @@
 ## Introduction
 
 This DataSource was motivated by a LogicMonitor customer request for a script that automatically creates/updates dashboards
-corresponding to groups in the device tree.  These dashboards each contain two widgets.  One widget is a Google Maps widget
-with map points corresponding to subgroups/devices.  The other widget is a text widget containing links to the other
-dashboards.
+corresponding to groups in the device tree.  These dashboards each contain three widgets.  One widget is a Google Maps 
+widget with map points corresponding to subgroups/devices.  The second is a text widget containing links to the other
+dashboards.  The final widget is a NOC widget providing an alternative view of subgroups/devices.
 
 ![Optional Text](https://github.com/ianbloom/autoGoogleMaps/blob/master/readmePictures/Screen%20Shot%202018-03-28%20at%202.48.10%20PM.png)
 
@@ -52,11 +52,13 @@ capture its ID, and if not, we create this dashboard.
 Then, we query the list of dashboards for dashboards with the same name as the subgroups.  If these dashboards exist, we 
 capture their dashboard ID, and if not, they are created.
 
-On the subgroup dashboards, we create a Google Maps widget with map points corresponding to devices in the subgroup.  The menu
-widget contains a single link, which refers the user back to the root group dashboard.
+On the subgroup dashboards, we create a Google Maps widget with map points corresponding to devices in the subgroup.  The 
+menu widget contains a single link, which refers the user back to the root group dashboard.  The NOC widget contains 
+information about all the devices in the subgroup.
 
-Finally, on the root dashboard, we create a Google Maps widget with map points corresponding to subgroups (i.e. states in the
-USA), and a menu widget which contains links to each of the subgroup dashboards.
+Finally, on the root dashboard, we create a Google Maps widget with map points corresponding to subgroups (i.e. states in 
+the USA), and a menu widget which contains links to each of the subgroup dashboards as well as a NOC widget that describes 
+the health of all subgroups.
 
 ### Still to be done...
 
