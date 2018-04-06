@@ -178,7 +178,6 @@ subGroupArray.each { item ->
 
 		responseBody = responseDict.body;
 		responseJSON = new JsonSlurper().parseText(responseBody);
-		println('body . ' + responseDict.body);
 
 		// Capture textWidgetId
 		textWidgetId = responseJSON.data.id;
@@ -246,6 +245,55 @@ subGroupArray.each { item ->
 		data = '{"name":"' + item.name + '_map","type":"gmap","dashboardId":"' + item.dashId + '","mapPoints":' + mapPoints + ',"rowSpan":2,"colSpan":2}';
 
 		responseDict = LMPUT(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
+	}
+}
+
+//////////////////////////
+// SUBGROUP NOC WIDGETS //
+//////////////////////////
+
+subGroupArray.each { item ->
+	// First see if subgroups have deviceNOC widget with the name subgroupName_noc
+	requestVerb = 'GET';
+	resourcePath = '/dashboard/dashboards/' + item.dashId + '/widgets';
+	queryParameters = '?filter=name~' + item.name + '_noc';
+	data = ''
+
+	responseDict =  LMGET(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
+	responseBody = responseDict.body;
+	responseJSON = new JsonSlurper().parseText(responseBody);
+	nocWidgetId = null;
+
+	// If root dash does not have a deviceNOC widget, post one
+	if(responseJSON.data.total == 0) {
+		requestVerb = 'POST';
+		resourcePath = '/dashboard/widgets';
+		queryParameters = '';
+
+		nocDevices = '[{"deviceGroupFullPath":"' + rootGroupName + '/' + item.name + '","deviceDisplayName":"*","dataSourceDisplayName":"*","instanceName":"*","dataPointName":"*","groupBy":"device","name":"##HOSTNAME##"}]';
+		data = '{"name":"' + item.name + '_noc","type":"deviceNOC","dashboardId":"' + item.dashId + '","items":' + nocDevices + ',"rowSpan":1,"colSpan":3}';
+
+		responseDict = LMPOST(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
+
+		responseBody = responseDict.body;
+		responseJSON = new JsonSlurper().parseText(responseBody);
+
+		// Capture nocWidgetId
+		nocWidgetId = responseJSON.data.id;
+	}
+	// If root dash DOES have a deviceNOC widget, PUT to update
+	else {
+		nocWidgetId = responseJSON.data.items[0].id;
+
+		requestVerb = 'PUT';
+		resourcePath = '/dashboard/widgets/' + nocWidgetId;
+		queryParameters = '';
+
+		nocDevices = '[{"deviceGroupFullPath":"' + rootGroupName + '/' + item.name + '","deviceDisplayName":"*","dataSourceDisplayName":"*","instanceName":"*","dataPointName":"*","groupBy":"device","name":"##HOSTNAME##"}]';
+		data = '{"name":"' + item.name + '_noc","type":"deviceNOC","dashboardId":"' + item.dashId + '","items":' + nocDevices + ',"rowSpan":1,"colSpan":3}';
+
+		responseDict = LMPUT(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
+		responseBody = responseDict.body;
 	}
 }
 
@@ -367,6 +415,74 @@ else {
 
 	responseDict = LMPUT(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
 }
+
+////////////////
+// NOC WIDGET //
+////////////////
+
+// First see if root dash has an existing NOC widget with the name rootGroupName_NOC
+requestVerb = 'GET';
+resourcePath = '/dashboard/dashboards/' + rootDashboardId + '/widgets';
+queryParameters = '?filter=name~' + rootGroupName + '_noc';
+data = ''
+
+responseDict =  LMGET(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
+responseBody = responseDict.body;
+responseJSON = new JsonSlurper().parseText(responseBody);
+nocWidgetId = null;
+
+// If root dash does not have a deviceNOC widget, post one
+if(responseJSON.data.total == 0) {
+	requestVerb = 'POST';
+	resourcePath = '/dashboard/widgets';
+	queryParameters = '';
+
+	nocDevices = '[';
+	subGroupArray.each { item ->
+		if(item == subGroupArray.last()) {
+			nocDevices += '{"deviceGroupFullPath":"' + rootGroupName + '/' + item.name + '","deviceDisplayName":"*","dataSourceDisplayName":"*","instanceName":"*","dataPointName":"*","groupBy":"deviceGroup","name":"##DEVICEGROUP##"}';
+		}
+		else {
+			nocDevices += '{"deviceGroupFullPath":"' + rootGroupName + '/' + item.name + '","deviceDisplayName":"*","dataSourceDisplayName":"*","instanceName":"*","dataPointName":"*","groupBy":"deviceGroup","name":"##DEVICEGROUP##"},';
+		}
+	}
+	nocDevices += ']';
+	data = '{"name":"' + rootGroupName + '_noc","type":"deviceNOC","dashboardId":"' + rootDashboardId + '","items":' + nocDevices + ',"rowSpan":1,"colSpan":3}';
+
+	responseDict = LMPOST(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
+
+	responseBody = responseDict.body;
+	responseJSON = new JsonSlurper().parseText(responseBody);
+
+	// Capture NOCWidgetId
+	nocWidgetId = responseJSON.data.id;
+}
+// If root dash DOES have a deviceNOC widget, PUT to update
+else {
+	nocWidgetId = responseJSON.data.items[0].id;
+
+	requestVerb = 'PUT';
+	resourcePath = '/dashboard/widgets/' + nocWidgetId;
+	queryParameters = '';
+
+	nocDevices = '[';
+	subGroupArray.each { item ->
+		if(item == subGroupArray.last()) {
+			nocDevices += '{"deviceGroupFullPath":"' + rootGroupName + '/' + item.name + '","deviceDisplayName":"*","dataSourceDisplayName":"*","instanceName":"*","dataPointName":"*","groupBy":"deviceGroup","name":"##DEVICEGROUP##"}';
+		}
+		else {
+			nocDevices += '{"deviceGroupFullPath":"' + rootGroupName + '/' + item.name + '","deviceDisplayName":"*","dataSourceDisplayName":"*","instanceName":"*","dataPointName":"*","groupBy":"deviceGroup","name":"##DEVICEGROUP##"},';
+		}
+	}
+	nocDevices += ']';
+	data = '{"name":"' + rootGroupName + '_noc","type":"deviceNOC","dashboardId":"' + rootDashboardId + '","items":' + nocDevices + ',"rowSpan":1,"colSpan":3}';
+
+	responseDict = LMPUT(accessId, accessKey, account, requestVerb, resourcePath, queryParameters, data);
+
+	responseBody = responseDict.body;
+}
+
+return 0;
 
 
 
