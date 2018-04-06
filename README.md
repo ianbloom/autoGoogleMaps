@@ -7,7 +7,7 @@ corresponding to groups in the device tree.  These dashboards each contain three
 widget with map points corresponding to subgroups/devices.  The second is a text widget containing links to the other
 dashboards.  The final widget is a NOC widget providing an alternative view of subgroups/devices.
 
-![Optional Text](https://github.com/ianbloom/autoGoogleMaps/readmePictures/Screen Shot 2018-04-06 at 10.52.57 AM.png)
+![Optional Text](https://github.com/ianbloom/autoGoogleMaps/blob/master/readmePictures/Screen%20Shot%202018-04-06%20at%2010.52.57%20AM.png)
 
 ## The Process
 
